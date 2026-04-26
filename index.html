@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-site Search</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f3;
+      --bg-info: #e6f1fb;
+      --text: #1a1a18;
+      --text-secondary: #6b6b67;
+      --text-tertiary: #9b9b96;
+      --text-info: #185fa5;
+      --border: rgba(0,0,0,0.12);
+      --border-secondary: rgba(0,0,0,0.22);
+      --border-info: #85b7eb;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c;
+        --bg-secondary: #2a2a28;
+        --bg-info: #042c53;
+        --text: #f0ede8;
+        --text-secondary: #a8a8a2;
+        --text-tertiary: #6b6b67;
+        --text-info: #85b7eb;
+        --border: rgba(255,255,255,0.1);
+        --border-secondary: rgba(255,255,255,0.2);
+        --border-info: #185fa5;
+      }
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2.5rem 1.25rem;
+    }
+
+    .app { width: 100%; max-width: 640px; }
+
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 1.75rem; }
+
+    .search-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+    .search-row input {
+      flex: 1;
+      font-size: 16px;
+      font-family: var(--font);
+      padding: 0 14px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-secondary);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+    }
+    .search-row input:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 3px rgba(128,128,128,0.1); }
+    .search-btn {
+      height: 44px;
+      padding: 0 20px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-secondary);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .search-btn:hover { background: var(--bg-secondary); }
+    .search-btn:active { transform: scale(0.98); }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .sites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 8px;
+      margin-bottom: 1.5rem;
+    }
+
+    .site-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .site-card:hover { background: var(--bg-secondary); border-color: var(--border-secondary); }
+    .site-card.active { border-color: var(--border-info); background: var(--bg-info); }
+    .site-card.active .site-name { color: var(--text-info); }
+
+    .site-icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .site-name { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+    .site-toggle {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border-secondary);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .site-card.active .site-toggle { background: var(--text-info); border-color: var(--text-info); }
+    .site-card.active .site-toggle::after {
+      content: '';
+      display: block;
+      width: 8px; height: 5px;
+      border-left: 1.5px solid #fff;
+      border-bottom: 1.5px solid #fff;
+      transform: rotate(-45deg) translate(1px, -1px);
+    }
+
+    details { margin-bottom: 1.5rem; }
+    details summary {
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 0;
+    }
+    details summary:hover { color: var(--text); }
+    .add-area { margin-top: 10px; }
+    .add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .add-row input {
+      font-size: 13px;
+      font-family: var(--font);
+      height: 36px;
+      padding: 0 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      min-width: 120px;
+    }
+    .add-row input:focus { border-color: var(--border-secondary); }
+    #new-name { flex: 1; }
+    #new-url { flex: 2.5; }
+    .add-btn {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-family: var(--font);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-secondary);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .add-btn:hover { background: var(--bg-secondary); }
+    .hint { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+
+    .results-area { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.25rem; }
+    .result-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+      background: var(--bg);
+    }
+    .result-icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .result-info { flex: 1; min-width: 0; }
+    .result-name { font-size: 13px; font-weight: 500; }
+    .result-url { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .open-link {
+      font-size: 12px;
+      color: var(--text-info);
+      text-decoration: none;
+      padding: 4px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-info);
+      flex-shrink: 0;
+    }
+    .open-link:hover { background: var(--bg-info); }
+    .status { font-size: 13px; color: var(--text-secondary); margin-top: 10px; }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .remove-btn:hover { color: #e24b4a; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Multi-site search</h1>
+  <p class="subtitle">Search multiple 3D printing sites at once</p>
+
+  <div class="search-row">
+    <input type="text" id="query" placeholder="Search query…" autocomplete="off" />
+    <button class="search-btn" onclick="runSearch()">Search all ↗</button>
+  </div>
+
+  <div class="section-label">Sites</div>
+  <div class="sites-grid" id="sites-grid"></div>
+
+  <details>
+    <summary>+ Add a site</summary>
+    <div class="add-area">
+      <div class="add-row">
+        <input type="text" id="new-name" placeholder="Name (e.g. Thingiverse)" />
+        <input type="text" id="new-url" placeholder="Search URL with {query}" />
+        <button class="add-btn" onclick="addSite()">Add</button>
+      </div>
+      <p class="hint">
+        Example: https://www.thingiverse.com/search?q={query}<br>
+        Other useful sites:<br>
+        &nbsp;Thingiverse — https://www.thingiverse.com/search?q={query}<br>
+        &nbsp;Cults3D — https://cults3d.com/en/search?q={query}<br>
+        &nbsp;MyMiniFactory — https://www.myminifactory.com/search/?query={query}<br>
+        &nbsp;Thangs — https://thangs.com/search/{query}
+      </p>
+    </div>
+  </details>
+
+  <div id="results-area" class="results-area" style="display:none;">
+    <div class="section-label">Opened tabs</div>
+    <div id="results-list"></div>
+    <p class="status" id="status-msg"></p>
+  </div>
+</div>
+
+<script>
+  const DEFAULT_SITES = [
+    { name: "MakerWorld", url: "https://makerworld.com/en/search?keyword={query}", color: "#1a6fd8", initials: "MW", active: true },
+    { name: "Printables", url: "https://www.printables.com/search/all?q={query}", color: "#e05c27", initials: "PR", active: true },
+  ];
+
+  let sites = [];
+
+  function saveSites() {
+    try { localStorage.setItem('mss_sites_v1', JSON.stringify(sites)); } catch(e) {}
+  }
+
+  function loadSites() {
+    try {
+      const stored = localStorage.getItem('mss_sites_v1');
+      sites = stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(DEFAULT_SITES));
+    } catch(e) {
+      sites = JSON.parse(JSON.stringify(DEFAULT_SITES));
+    }
+  }
+
+  function renderSites() {
+    const grid = document.getElementById('sites-grid');
+    grid.innerHTML = '';
+    sites.forEach((site, i) => {
+      const card = document.createElement('div');
+      card.className = 'site-card' + (site.active ? ' active' : '');
+      card.innerHTML = `
+        <div class="site-icon" style="background:${site.color}22; color:${site.color};">${site.initials}</div>
+        <span class="site-name">${site.name}</span>
+        <button class="remove-btn" title="Remove site" onclick="removeSite(event, ${i})">×</button>
+        <div class="site-toggle"></div>
+      `;
+      card.addEventListener('click', () => {
+        site.active = !site.active;
+        saveSites();
+        renderSites();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  function removeSite(e, i) {
+    e.stopPropagation();
+    if (confirm(`Remove "${sites[i].name}"?`)) {
+      sites.splice(i, 1);
+      saveSites();
+      renderSites();
+    }
+  }
+
+  function addSite() {
+    const name = document.getElementById('new-name').value.trim();
+    const url = document.getElementById('new-url').value.trim();
+    if (!name || !url) { alert('Please enter both a name and a URL.'); return; }
+    if (!url.includes('{query}')) { alert('The URL must contain {query} as a placeholder for the search term.\n\nExample: https://www.thingiverse.com/search?q={query}'); return; }
+    const initials = name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
+    const palette = ['#1a6fd8','#e05c27','#2da44e','#8b5cf6','#e11d48','#0891b2','#d97706','#059669'];
+    const color = palette[sites.length % palette.length];
+    sites.push({ name, url, color, initials, active: true });
+    saveSites();
+    renderSites();
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-url').value = '';
+  }
+
+  function runSearch() {
+    const q = document.getElementById('query').value.trim();
+    if (!q) { document.getElementById('query').focus(); return; }
+    const active = sites.filter(s => s.active);
+    if (!active.length) { alert('Please enable at least one site.'); return; }
+
+    const resultsList = document.getElementById('results-list');
+    resultsList.innerHTML = '';
+    document.getElementById('results-area').style.display = 'block';
+
+    active.forEach((site, i) => {
+      const searchUrl = site.url.replace('{query}', encodeURIComponent(q));
+      const row = document.createElement('div');
+      row.className = 'result-row';
+      row.innerHTML = `
+        <div class="result-icon" style="background:${site.color}22; color:${site.color};">${site.initials}</div>
+        <div class="result-info">
+          <div class="result-name">${site.name}</div>
+          <div class="result-url">${searchUrl}</div>
+        </div>
+        <a href="${searchUrl}" target="_blank" rel="noopener" class="open-link">Open ↗</a>
+      `;
+      resultsList.appendChild(row);
+      setTimeout(() => window.open(searchUrl, '_blank'), i * 150);
+    });
+
+    document.getElementById('status-msg').textContent =
+      `Opened ${active.length} tab${active.length !== 1 ? 's' : ''} for "${q}"`;
+  }
+
+  document.getElementById('query').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runSearch();
+  });
+
+  loadSites();
+  renderSites();
+</script>
+</body>
+</html>
